@@ -1,11 +1,13 @@
 #include <GL/glut.h>
 #include <cmath>
 #include <algorithm>
-
+#define PI 3.14159265
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 GLuint texturaRoda;
+GLuint texturaChao;
+
 
 bool farolLigado = false;           // Estado do farol
 float anguloRodasDianteiras = 0.0f; // Ângulo das rodas dianteiras
@@ -18,7 +20,7 @@ float anguloRodas = 0.0f; // Ângulo de rotação das rodas
 float posX = 0.0f, posZ = 0.0f; // Posição do trator
 float direcao = 0.0f;           // Direção do trator (ângulo em graus)
 
-float velocidade = 0.5f; // Velocidade do trator
+float velocidade = 0.4f; // Velocidade do trator
 
 GLfloat lightPosition[] = {5.0f, 5.0f, 5.0f, 1.0f}; // Posição da luz
 GLfloat lightAmbient[] = {0.2f, 0.2f, 0.2f, 1.0f};  // Luz ambiente
@@ -208,11 +210,12 @@ void carregarTextura(const char *arquivo, GLuint &texturaID)
         gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, largura, altura, GL_RGB, GL_UNSIGNED_BYTE, dados);
 
         // Parâmetros de filtro da textura
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MODULATE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MODULATE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+        //GL_REPEAT OU GL_MODULATE
         stbi_image_free(dados);
     }
     else
@@ -272,6 +275,7 @@ void inicializa()
 
     glEnable(GL_TEXTURE_2D); // Habilita texturas
     carregarTextura("pneu.png", texturaRoda);
+    carregarTextura("rua.png", texturaChao); // Carrega a textura do chão
 }
 
 void atualizaIluminacao()
@@ -414,11 +418,11 @@ void desenhaRoda(float raio, float largura)
     glPopMatrix();
 }
 
-void desenhaCabine()
+void desenhaCabine(GLuint texturaID)
 {
     // Dimensões da cabine
-    float larguraTeto = 1.92f;     // Largura do teto
-    float profundidadeTeto = 1.7f; // Profundidade do teto
+    float larguraTeto = 1.5f;     // Largura do teto
+    float profundidadeTeto = 1.5f; // Profundidade do teto
     float alturaCabine = 1.9f;     // Altura da cabine a partir do topo do trator
     float espessuraHaste = 0.2f;   // Espessura das hastes
 
@@ -436,62 +440,129 @@ void desenhaCabine()
         glPopMatrix();
     }
 
+    glEnable(GL_TEXTURE_2D);  // Habilitar texturização
+    glBindTexture(GL_TEXTURE_2D, texturaID);  // Associar a textura carregada
+
     // Teto da cabine
-    glColor3f(1.0f, 0.5f, 0.0f); // Amarelo alaranjado
+    //glColor3f(1.0f, 0.5f, 0.0f); // Amarelo alaranjado
+    glColor3f(1.0f, 1.0f, 1.0f); 
     glPushMatrix();
     glTranslatef(0.0f, alturaCabine, 0.0f);
-    glScalef(larguraTeto + espessuraHaste, espessuraHaste, profundidadeTeto + espessuraHaste);
-    glutSolidCube(1.0f); // Teto como um cubo achatado
+    glScalef(larguraTeto - espessuraHaste , espessuraHaste, profundidadeTeto - espessuraHaste);
+
+    // Desenha as faces do teto manualmente com coordenadas de textura
+    glBegin(GL_QUADS);
+
+    // Face superior
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-larguraTeto / 2, 0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(larguraTeto / 2, 0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(larguraTeto / 2, 0.5f, profundidadeTeto / 2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-larguraTeto / 2, 0.5f, profundidadeTeto / 2);
+
+    // Face inferior
+    glNormal3f(0.0f, -1.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-larguraTeto / 2, -0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(larguraTeto / 2, -0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(larguraTeto / 2, -0.5f, profundidadeTeto / 2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-larguraTeto / 2, -0.5f, profundidadeTeto / 2);
+
+    // Face frontal
+    glNormal3f(0.0f, 0.0f, 1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-larguraTeto / 2, -0.5f, profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(larguraTeto / 2, -0.5f, profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(larguraTeto / 2, 0.5f, profundidadeTeto / 2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-larguraTeto / 2, 0.5f, profundidadeTeto / 2);
+
+    // Face traseira
+    glNormal3f(0.0f, 0.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-larguraTeto / 2, -0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(larguraTeto / 2, -0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(larguraTeto / 2, 0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-larguraTeto / 2, 0.5f, -profundidadeTeto / 2);
+
+    // Face lateral direita
+    glNormal3f(1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(larguraTeto / 2, -0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(larguraTeto / 2, -0.5f, profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(larguraTeto / 2, 0.5f, profundidadeTeto / 2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(larguraTeto / 2, 0.5f, -profundidadeTeto / 2);
+
+    // Face lateral esquerda
+    glNormal3f(-1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-larguraTeto / 2, -0.5f, -profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-larguraTeto / 2, -0.5f, profundidadeTeto / 2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-larguraTeto / 2, 0.5f, profundidadeTeto / 2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-larguraTeto / 2, 0.5f, -profundidadeTeto / 2);
+
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D); // Desabilitar texturização
+
     glPopMatrix();
 }
 
 float anguloBraco = 300.0f; // Ângulo de rotação do braço
-float anguloPá = 270.0f;    // Ângulo de rotação da pá
+float anguloPá = 90.0f;    // Ângulo de rotação da pá
+void desenhaPá(GLuint texturaID){
+    glEnable(GL_TEXTURE_2D);                        // Habilitar texturização
+    glBindTexture(GL_TEXTURE_2D, texturaID);        // Associar a textura carregada
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE); // Modo de textura
+    glColor3f(1.0f, 1.0f, 1.0f);                    // Definir cor como branco para não alterar a textura
 
-void desenhaPá()
-{
     // Dimensões da pá
     float larguraPá = 1.0f;      // Largura da pá
-    float alturaPá = 0.8f;       // Altura da pá (para comportar mais coisas)
-    float profundidadePá = 2.0f; // Profundidade da pá
+    float alturaPá = 0.8f;       // Altura da pá
+    float profundidadePá = 2.0f; // Profundidade (comprimento) da pá
 
-    // Desenhar a pá com base funda e laterais tampadas
+    // Posição e orientação da pá
     glPushMatrix();
-    glColor3f(0.968f, 0.58f, 0.11f); // Amarelo alaranjado
+    // Orientar a pá para o eixo -x
+    glRotatef(90.0f, 0.0f, 1.0f, 0.0f); // Rotaciona a pá para apontar para -x
+    glTranslatef(-profundidadePá / 2, 0.0f, 0.0f); // Ajusta a posição após rotação
 
-    // Base da pá (trapezoidal)
+    // Desenhar a pá principal com textura, sem face superior
     glBegin(GL_QUADS);
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);      // Inferior esquerdo traseiro
-    glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior direito traseiro
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2);  // Superior direito frontal
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2); // Superior esquerdo frontal
+        // Face frontal da pá (apontando para -x)
+        glNormal3f(-1.0f, 0.0f, 0.0f); // Normal apontando para -x
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f, -alturaPá / 2, -larguraPá / 2);      // Inferior esquerdo
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(0.0f, -alturaPá / 2, larguraPá / 2);       // Inferior direito
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(0.0f, alturaPá / 2, larguraPá / 2);        // Superior direito
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, alturaPá / 2, -larguraPá / 2);       // Superior esquerdo
+
+        // Face traseira da pá
+        glNormal3f(1.0f, 0.0f, 0.0f); // Normal apontando para +x
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(profundidadePá, -alturaPá / 2, -larguraPá / 2);       // Inferior esquerdo
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(profundidadePá, -alturaPá / 2, larguraPá / 2);        // Inferior direito
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(profundidadePá, alturaPá / 2, larguraPá / 2);         // Superior direito
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(profundidadePá, alturaPá / 2, -larguraPá / 2);        // Superior esquerdo
+
+        // Face inferior da pá
+        glNormal3f(0.0f, -1.0f, 0.0f); // Normal apontando para baixo
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f, -alturaPá / 2, -larguraPá / 2); // Esquerda traseira
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(profundidadePá, -alturaPá / 2, -larguraPá / 2); // Direita traseira
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(profundidadePá, -alturaPá / 2, larguraPá / 2);  // Direita frontal
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, -alturaPá / 2, larguraPá / 2); // Esquerda frontal
+
+        // Face lateral direita
+        glNormal3f(0.0f, 0.0f, 1.0f); // Normal apontando para +z
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f, -alturaPá / 2, larguraPá / 2);        // Inferior traseiro
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(profundidadePá, -alturaPá / 2, larguraPá / 2); // Inferior frontal
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(profundidadePá, alturaPá / 2, larguraPá / 2);  // Superior frontal
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, alturaPá / 2, larguraPá / 2);         // Superior traseiro
+
+        // Face lateral esquerda
+        glNormal3f(0.0f, 0.0f, -1.0f); // Normal apontando para -z
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f, -alturaPá / 2, -larguraPá / 2);       // Inferior traseiro
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(profundidadePá, -alturaPá / 2, -larguraPá / 2); // Inferior frontal
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(profundidadePá, alturaPá / 2, -larguraPá / 2);  // Superior frontal
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, alturaPá / 2, -larguraPá / 2);         // Superior traseiro
     glEnd();
 
-    // Lado esquerdo da pá
-    glBegin(GL_QUADS);
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior traseiro esquerdo
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2); // Superior traseiro esquerdo
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2);  // Superior frontal esquerdo
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, profundidadePá / 2);        // Inferior frontal esquerdo
-    glEnd();
 
-    // Lado direito da pá
-    glBegin(GL_QUADS);
-    glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior traseiro direito
-    glVertex3f(larguraPá / 2, -alturaPá / 2, profundidadePá / 2);        // Inferior frontal direito
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2);  // Superior frontal direito
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2); // Superior traseiro direito
-    glEnd();
+    glDisable(GL_TEXTURE_2D);            // Desabilitar texturização
 
-    // Traseira da pá
-    glBegin(GL_QUADS);
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior esquerdo traseiro
-    glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);        // Inferior direito traseiro
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2);  // Superior direito traseiro
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2); // Superior esquerdo traseiro
-    glEnd();
-
-    glPopMatrix();
+    glPopMatrix(); // Finaliza as transformações gerais da pá
 }
 
 void desenhaBracoDuplo()
@@ -540,12 +611,14 @@ void desenhaBracoDuplo()
     glTranslatef(baseX, baseY, 0.0f);         // Posição inicial da pá no eixo
     glRotatef(anguloBraco, 0.0f, 0.0f, 1.0f); // Mesma rotação dos braços
     glTranslatef(0.0f, -alturaBraco, 0.0f);   // Ajusta a pá para a ponta dos braços
-    glRotatef(anguloPá, 0.0f, 0.0f, 1.0f);    // Rotação da pá
-    desenhaPá();
+    glRotatef(anguloPá, 0.0f, 0.0f, 1.0f);     // Rotação da pá
+    GLuint texturaCorpoTrator;
+    carregarTextura("texturaLateral.jpg", texturaCorpoTrator);
+    desenhaPá(texturaCorpoTrator);
     glPopMatrix();
 }
 
-void desenhaCorpoTrator()
+void desenhaCorpoTrator(GLuint texturaID)
 {
     // Variáveis para ajustar o corpo do trator
     float larguraBase = 2.0f;      // Largura da base do corpo
@@ -559,51 +632,58 @@ void desenhaCorpoTrator()
     // Escala geral do corpo do trator
     glScalef(larguraBase, alturaBase, profundidadeBase);
 
+    glEnable(GL_TEXTURE_2D);                    // Habilitar texturização
+    glBindTexture(GL_TEXTURE_2D, texturaID);    // Associar a textura carregada
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE); // Modo de textura
+    glColor3f(1.0f, 1.0f, 1.0f);                // Definir cor como branco para não alterar a textura
+
     glBegin(GL_QUADS);
 
     // Face frontal
     glNormal3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(-1.0f, -0.5f, 0.5f);            // Inferior esquerdo
-    glVertex3f(1.0f, -0.5f, 0.5f);             // Inferior direito
-    glVertex3f(topoAjuste, alturaTopo, 0.5f);  // Superior direito
-    glVertex3f(-topoAjuste, alturaTopo, 0.5f); // Superior esquerdo
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -0.5f, 0.5f);            // Inferior esquerdo
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -0.5f, 0.5f);             // Inferior direito
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(topoAjuste, alturaTopo, 0.5f);  // Superior direito
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-topoAjuste, alturaTopo, 0.5f); // Superior esquerdo
 
     // Face traseira
     glNormal3f(0.0f, 0.0f, -1.0f);
-    glVertex3f(-1.0f, -0.5f, -0.5f);            // Inferior esquerdo
-    glVertex3f(1.0f, -0.5f, -0.5f);             // Inferior direito
-    glVertex3f(topoAjuste, alturaTopo, -0.5f);  // Superior direito
-    glVertex3f(-topoAjuste, alturaTopo, -0.5f); // Superior esquerdo
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -0.5f, -0.5f);            // Inferior esquerdo
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -0.5f, -0.5f);             // Inferior direito
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(topoAjuste, alturaTopo, -0.5f);  // Superior direito
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-topoAjuste, alturaTopo, -0.5f); // Superior esquerdo
 
     // Face superior
     glNormal3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(-topoAjuste, alturaTopo, -0.5f); // Traseiro esquerdo
-    glVertex3f(topoAjuste, alturaTopo, -0.5f);  // Traseiro direito
-    glVertex3f(topoAjuste, alturaTopo, 0.5f);   // Frontal direito
-    glVertex3f(-topoAjuste, alturaTopo, 0.5f);  // Frontal esquerdo
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-topoAjuste, alturaTopo, -0.5f); // Traseiro esquerdo
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(topoAjuste, alturaTopo, -0.5f);  // Traseiro direito
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(topoAjuste, alturaTopo, 0.5f);   // Frontal direito
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-topoAjuste, alturaTopo, 0.5f);  // Frontal esquerdo
 
     // Face inferior
     glNormal3f(0.0f, -1.0f, 0.0f);
-    glVertex3f(-1.0f, -0.5f, -0.5f); // Traseiro esquerdo
-    glVertex3f(1.0f, -0.5f, -0.5f);  // Traseiro direito
-    glVertex3f(1.0f, -0.5f, 0.5f);   // Frontal direito
-    glVertex3f(-1.0f, -0.5f, 0.5f);  // Frontal esquerdo
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -0.5f, -0.5f); // Traseiro esquerdo
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -0.5f, -0.5f);  // Traseiro direito
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, -0.5f, 0.5f);   // Frontal direito
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.5f, 0.5f);  // Frontal esquerdo
 
     // Face lateral direita
     glNormal3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(1.0f, -0.5f, -0.5f);            // Inferior traseiro
-    glVertex3f(topoAjuste, alturaTopo, -0.5f); // Superior traseiro
-    glVertex3f(topoAjuste, alturaTopo, 0.5f);  // Superior frontal
-    glVertex3f(1.0f, -0.5f, 0.5f);             // Inferior frontal
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -0.5f, -0.5f);            // Inferior traseiro
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(topoAjuste, alturaTopo, -0.5f); // Superior traseiro
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(topoAjuste, alturaTopo, 0.5f);  // Superior frontal
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, -0.5f, 0.5f);             // Inferior frontal
 
     // Face lateral esquerda
     glNormal3f(-1.0f, 0.0f, 0.0f);
-    glVertex3f(-1.0f, -0.5f, -0.5f);            // Inferior traseiro
-    glVertex3f(-topoAjuste, alturaTopo, -0.5f); // Superior traseiro
-    glVertex3f(-topoAjuste, alturaTopo, 0.5f);  // Superior frontal
-    glVertex3f(-1.0f, -0.5f, 0.5f);             // Inferior frontal
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -0.5f, -0.5f);            // Inferior traseiro
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-topoAjuste, alturaTopo, -0.5f); // Superior traseiro
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-topoAjuste, alturaTopo, 0.5f);  // Superior frontal
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -0.5f, 0.5f);             // Inferior frontal
 
     glEnd();
+
+    glDisable(GL_TEXTURE_2D);  // Desabilitar texturização
 
     // Desenha o farol
     desenhaFarol();
@@ -675,48 +755,96 @@ float anguloBracoTraseiro = 150.0f; // Ângulo de rotação do braço traseiro
 float anguloAntebraco = 250.0f;     // Ângulo do antebraço traseiro
 float anguloPaTraseira = 180.0f;    // Ângulo da pá traseira
 
-void desenhaPáTraseira()
+// Função para desenhar uma pá de escavadeira com curvatura
+void desenhaPáTraseira(GLuint texturaID)
 {
-    // Dimensões da pá traseira
-    float larguraPá = 1.5f;      // Largura da pá
-    float alturaPá = 0.7f;       // Altura da pá
-    float profundidadePá = 1.0f; // Profundidade da pá
+    // Dimensões da pá
+    float larguraPá = 1.5f;       // Largura da pá
+    float alturaPá = 0.7f;        // Altura da pá
+    float profundidadePá = 1.0f;  // Profundidade da pá
 
     glPushMatrix();
-    glColor3f(0.968f, 0.58f, 0.11f); // Amarelo alaranjado
+    glEnable(GL_TEXTURE_2D);  // Habilitar texturização
+    glBindTexture(GL_TEXTURE_2D, texturaID);  // Associar a textura carregada
 
-    // Base da pá (fundo inclinado)
+    glColor3f(1.0f, 1.0f, 1.0f); // Cor branca para aplicar a textura
+
+    // 1. Base da pá (retangular, fundo plano)
     glBegin(GL_QUADS);
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);      // Inferior traseiro esquerdo
-    glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior traseiro direito
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2);  // Superior frontal direito
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2); // Superior frontal esquerdo
+        glTexCoord2f(0.0f, 0.0f); 
+        glVertex3f(-larguraPá / 4, alturaPá / 2, profundidadePá / 2); // Invertido Z
+
+        glTexCoord2f(1.0f, 0.0f); 
+        glVertex3f(larguraPá / 4, alturaPá / 2, profundidadePá / 2);  // Invertido Z
+
+        glTexCoord2f(1.0f, 1.0f); 
+        glVertex3f(larguraPá / 4, alturaPá / 2, -profundidadePá / 2); // Invertido Z
+
+        glTexCoord2f(0.0f, 1.0f); 
+        glVertex3f(-larguraPá / 4, alturaPá / 2, -profundidadePá / 2); // Invertido Z
     glEnd();
 
-    // Lado esquerdo da pá
+    // 2. Lado esquerdo da pá (trapezoide)
     glBegin(GL_QUADS);
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior traseiro esquerdo
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, profundidadePá / 2);        // Inferior frontal esquerdo
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2);  // Superior frontal esquerdo
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2); // Superior traseiro esquerdo
+        glTexCoord2f(0.0f, 0.0f); 
+        glVertex3f(-larguraPá / 2, -alturaPá / 2, profundidadePá / 2);  // Invertido Z
+
+        glTexCoord2f(1.0f, 0.0f); 
+        glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2); // Invertido Z
+
+        glTexCoord2f(1.0f, 1.0f); 
+        glVertex3f(-larguraPá / 4, alturaPá / 2, -profundidadePá / 2); // Invertido Z
+
+        glTexCoord2f(0.0f, 1.0f); 
+        glVertex3f(-larguraPá / 4, alturaPá / 2, profundidadePá / 2);  // Invertido Z
     glEnd();
 
-    // Lado direito da pá
+    // 3. Lado direito da pá (trapezoide)
     glBegin(GL_QUADS);
-    glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior traseiro direito
-    glVertex3f(larguraPá / 2, -alturaPá / 2, profundidadePá / 2);        // Inferior frontal direito
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, profundidadePá / 2);  // Superior frontal direito
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2); // Superior traseiro direito
+        glTexCoord2f(0.0f, 0.0f); 
+        glVertex3f(larguraPá / 2, -alturaPá / 2, profundidadePá / 2);   // Invertido Z
+
+        glTexCoord2f(1.0f, 0.0f); 
+        glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);  // Invertido Z
+
+        glTexCoord2f(1.0f, 1.0f); 
+        glVertex3f(larguraPá / 4, alturaPá / 2, -profundidadePá / 2);  // Invertido Z
+
+        glTexCoord2f(0.0f, 1.0f); 
+        glVertex3f(larguraPá / 4, alturaPá / 2, profundidadePá / 2);   // Invertido Z
     glEnd();
 
-    // Traseira da pá
+    // 4. Frente da pá (quadrado)
     glBegin(GL_QUADS);
-    glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);       // Inferior traseiro esquerdo
-    glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2);        // Inferior traseiro direito
-    glVertex3f(larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2);  // Superior traseiro direito
-    glVertex3f(-larguraPá / 2 * 0.8f, alturaPá / 2, -profundidadePá / 2); // Superior traseiro esquerdo
+        glTexCoord2f(0.0f, 0.0f); 
+        glVertex3f(-larguraPá / 4, alturaPá / 2, -profundidadePá / 2); // Invertido Z
+
+        glTexCoord2f(1.0f, 0.0f); 
+        glVertex3f(larguraPá / 4, alturaPá / 2, -profundidadePá / 2);  // Invertido Z
+
+        glTexCoord2f(1.0f, 1.0f); 
+        glVertex3f(larguraPá / 2, -alturaPá / 2, -profundidadePá / 2); // Invertido Z
+
+        glTexCoord2f(0.0f, 1.0f); 
+        glVertex3f(-larguraPá / 2, -alturaPá / 2, -profundidadePá / 2); // Invertido Z
     glEnd();
 
+    // 5. Traseira da pá (quadrado)
+    glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f); 
+        glVertex3f(-larguraPá / 2, -alturaPá / 2, profundidadePá / 2);  // Invertido Z
+
+        glTexCoord2f(1.0f, 0.0f); 
+        glVertex3f(larguraPá / 2, -alturaPá / 2, profundidadePá / 2);   // Invertido Z
+
+        glTexCoord2f(1.0f, 1.0f); 
+        glVertex3f(larguraPá / 4, alturaPá / 2, profundidadePá / 2);    // Invertido Z
+
+        glTexCoord2f(0.0f, 1.0f); 
+        glVertex3f(-larguraPá / 4, alturaPá / 2, profundidadePá / 2);   // Invertido Z
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
     glPopMatrix();
 }
 void desenhaBracoTraseiro()
@@ -762,41 +890,33 @@ void desenhaBracoTraseiro()
     glPushMatrix();
     glTranslatef(0.3f, -alturaAntebraco / 2, 0.0f); // Conecta a pá ao final do antebraço
     glRotatef(anguloPaTraseira, 0.0f, 0.0f, 1.0f);  // Rotação da pá traseira
-    desenhaPáTraseira();                            // Substituição pelo desenho da nova pá
+    GLuint texturaPaTraseira;
+    carregarTextura("texturaLateral.jpg", texturaPaTraseira);
+    desenhaPáTraseira(texturaPaTraseira);        
     glPopMatrix();
 
     glPopMatrix(); // Final do antebraço
     glPopMatrix(); // Final do braço principal
 }
 
-void desenhaMapa()
-{
-    glPushMatrix();
-    glColor3f(0.5f, 0.8f, 0.5f); // Verde claro para o chão
-    glBegin(GL_QUADS);
-    glVertex3f(-50.0f, -0.5f, -50.0f);
-    glVertex3f(-50.0f, -0.5f, 50.0f);
-    glVertex3f(50.0f, -0.5f, 50.0f);
-    glVertex3f(50.0f, -0.5f, -50.0f);
-    glEnd();
-    glPopMatrix();
-}
-
 void desenhaTrator()
 {
     glPushMatrix();
     // Aplica a posição e rotação do trator
-    glTranslatef(posX, 0.0f, posZ);
+    glTranslatef(posX, 0.79f, posZ);
     glRotatef(direcao, 0.0f, 1.0f, 0.0f);
 
     // Desenhar o corpo do trator
     glColor3f(0.968f, 0.58f, 0.11f); // Amarelo alaranjado
-    desenhaCorpoTrator();
+    
+    GLuint texturaCorpoTrator;
+    carregarTextura("texturaLateral.jpg", texturaCorpoTrator);
+    desenhaCorpoTrator(texturaCorpoTrator);
 
     // Desenhar a cabine do motorista
     glPushMatrix();
     glTranslatef(0.5f, 1.0f, 0.0f); // Posição da cabine deslocada
-    desenhaCabine();
+    desenhaCabine(texturaCorpoTrator);
     glPopMatrix();
 
     // Desenhar o braço frontal da retroescavadeira
@@ -830,20 +950,54 @@ void desenhaTrator()
 
     // Rodas dianteiras - direita
     glPushMatrix();
-    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, posZ);
+    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY-0.2, posZ);
     glRotatef(anguloRodasDianteiras, 0.0f, 1.0f, 0.0f); // Rotação das rodas dianteiras
     desenhaRoda(raioRodasDianteiras, larguraRodasDianteiras);
     glPopMatrix();
 
     // Rodas dianteiras - esquerda
     glPushMatrix();
-    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, -posZ);
+    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY-0.2, -posZ);
     glRotatef(anguloRodasDianteiras, 0.0f, 1.0f, 0.0f); // Rotação das rodas dianteiras
     desenhaRoda(raioRodasDianteiras, larguraRodasDianteiras);
     glPopMatrix();
 
     glPopMatrix(); // Finaliza as transformações do trator
 }
+
+void desenhaMapa(GLuint texturaID)
+{
+
+    float larguraMapa = 50; 
+    float comprimentoMapa = 50;
+    glPushMatrix();
+    glColor3f(1.0f, 1.0f, 1.0f); // Branco para não alterar a textura
+    glEnable(GL_TEXTURE_2D);  // Habilitar texturização
+    glBindTexture(GL_TEXTURE_2D, texturaID);  // Associar a textura carregada
+   
+    glBegin(GL_QUADS);
+        // Coordenadas de textura ajustadas para repetição proporcional ao tamanho do mapa
+        float repeatX = larguraMapa / 10.0f;      // Número de repetições na largura
+        float repeatZ = comprimentoMapa / 10.0f;  // Número de repetições no comprimento
+
+        // Definindo os vértices com base nas variáveis de largura e comprimento
+        glTexCoord2f(0.0f, 0.0f); 
+        glVertex3f(-larguraMapa / 2.0f, -0.5f, -comprimentoMapa / 2.0f);
+
+        glTexCoord2f(0.0f, repeatZ); 
+        glVertex3f(-larguraMapa / 2.0f, -0.5f, comprimentoMapa / 2.0f);
+
+        glTexCoord2f(repeatX, repeatZ); 
+        glVertex3f(larguraMapa / 2.0f, -0.5f, comprimentoMapa / 2.0f);
+
+        glTexCoord2f(repeatX, 0.0f); 
+        glVertex3f(larguraMapa / 2.0f, -0.5f, -comprimentoMapa / 2.0f);
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+}
+
 
 void display()
 {
@@ -861,6 +1015,9 @@ void display()
 
     // Atualizar as lanternas
     atualizarPiscarLanterna(0.1f);  // DeltaTime de exemplo (em segundos)
+
+    // Desenhar o chão
+    desenhaMapa(texturaChao);
 
     // Desenhar o trator completo (corpo + cabine + rodas)
     desenhaTrator();

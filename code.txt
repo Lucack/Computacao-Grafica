@@ -7,5 +7,8 @@ g++ -Wall -Iinclude -g sistSolar.cpp -o sistSolar.exe -Llib -lopengl32 -lglu32 -
 g++ -Wall -Iinclude -g pratica2.cpp -o pratica2.exe -Llib -lopengl32 -lglu32 -lfreeglut
 g++ -Wall -Iinclude -g ProjetoFinal.cpp -o ProjetoFinal.exe -Llib -lopengl32 -lglu32 -lfreeglut
 
+g++ -Wall -Iinclude -g teste.cpp -o teste.exe -Llib -lopengl32 -lglu32 -lfreeglut
+
+
 
 g++ -Wall -Iinclude -g trator.cpp -o Trator.exe -Llib -lopengl32 -lglu32 -lfreeglut
