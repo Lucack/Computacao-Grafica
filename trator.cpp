@@ -8,6 +8,7 @@
 GLuint texturaRoda;
 
 bool farolLigado = false; // Estado do farol
+float anguloRodasDianteiras = 0.0f; // Ângulo das rodas dianteiras
 
 
 float cameraAngleX = 0.0f, cameraAngleY = 0.0f;
@@ -625,14 +626,17 @@ void desenhaTrator() {
     // Rodas dianteiras - direita
     glPushMatrix();
     glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, posZ);
+    glRotatef(anguloRodasDianteiras, 0.0f, 1.0f, 0.0f); // Rotação das rodas dianteiras
     desenhaRoda(raioRodasDianteiras, larguraRodasDianteiras);
     glPopMatrix();
 
     // Rodas dianteiras - esquerda
     glPushMatrix();
     glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, -posZ);
+    glRotatef(anguloRodasDianteiras, 0.0f, 1.0f, 0.0f); // Rotação das rodas dianteiras
     desenhaRoda(raioRodasDianteiras, larguraRodasDianteiras);
     glPopMatrix();
+
 
     glPopMatrix(); // Finaliza as transformações do trator
 }
@@ -660,24 +664,28 @@ void display() {
 
 void teclado(unsigned char tecla, int x, int y) {
     switch (tecla) {
-    case 's': // Mover para frente
-        posX += velocidade * cos(direcao * M_PI / 180.0f);
-        posZ -= velocidade * sin(direcao * M_PI / 180.0f);
-        anguloRodas -= (360.0f * velocidade) / (2.0f * M_PI * 0.6f); // Roda girando para frente
+   case 's': // Mover para frente
+    posX += velocidade * cos(direcao * M_PI / 180.0f);
+    posZ -= velocidade * sin(direcao * M_PI / 180.0f);
+    direcao += velocidade * (-anguloRodasDianteiras*10 / 45.0f) * 1.2f; // Impacto proporcional ao máximo
+    anguloRodas -= (360.0f * velocidade) / (2.0f * M_PI * 0.6f); // Roda girando para frente
+    break;
+
+case 'w': // Mover para trás
+    posX -= velocidade * cos(direcao * M_PI / 180.0f);
+    posZ += velocidade * sin(direcao * M_PI / 180.0f);
+    direcao -= velocidade * (-anguloRodasDianteiras*10 / 45.0f) * 1.2f; // Impacto proporcional ao máximo
+    anguloRodas += (360.0f * velocidade) / (2.0f * M_PI * 0.6f); // Roda girando para trás
+    break;
+
+
+   case 'a': // Virar as rodas para a esquerda
+        anguloRodasDianteiras = std::min(anguloRodasDianteiras + 5.0f, 45.0f); // Aumentar limite para 45 graus
         break;
-    case 'w': // Mover para trás
-        posX -= velocidade * cos(direcao * M_PI / 180.0f);
-        posZ += velocidade * sin(direcao * M_PI / 180.0f);
-        anguloRodas += (360.0f * velocidade) / (2.0f * M_PI * 0.6f); // Roda girando para trás
+    case 'd': // Virar as rodas para a direita
+        anguloRodasDianteiras = std::max(anguloRodasDianteiras - 5.0f, -45.0f); // Aumentar limite para -45 graus
         break;
-    case 'a': // Girar para a esquerda
-        direcao += 5.0f;
-        if (direcao >= 360.0f) direcao -= 360.0f; // Mantém o ângulo entre 0 e 360
-        break;
-    case 'd': // Girar para a direita
-        direcao -= 5.0f;
-        if (direcao < 0.0f) direcao += 360.0f; // Mantém o ângulo entre 0 e 360
-        break;
+
     case '+':
         cameraDistance = std::max(cameraDistance - 0.5f, 5.0f);
         break;
