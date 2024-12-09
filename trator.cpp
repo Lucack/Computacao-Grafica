@@ -1158,6 +1158,25 @@ void desenhaMuroEmConstrucao(float x, float y, float z, float comprimento, float
     
     glPopMatrix();
 }
+// Função para desenhar um prédio composto por andaimes simétricos
+void desenhaPredio(int numCamadas, float incrementoY, float distanciaX, float distanciaZ, float baseX, float baseZ) {
+    for (int camada = 0; camada < numCamadas; ++camada) {
+        float y = camada * incrementoY;
+
+        // Posições simétricas dos quatro andaimes por camada
+        float posicoes[4][3] = {
+            { baseX + distanciaX, y, baseZ + distanciaZ },
+            { baseX - distanciaX, y, baseZ + distanciaZ },
+            { baseX + distanciaX, y, baseZ - distanciaZ },
+            { baseX - distanciaX, y, baseZ - distanciaZ }
+        };
+
+        // Desenha os quatro andaimes desta camada
+        for (int i = 0; i < 4; ++i) {
+            desenhaAndaime(posicoes[i][0], posicoes[i][1], posicoes[i][2]);
+        }
+    }
+}
 
 void desenhaMapa(GLuint texturaID) {
     glPushMatrix();
@@ -1173,13 +1192,14 @@ void desenhaMapa(GLuint texturaID) {
     glDisable(GL_TEXTURE_2D);
     
     // Draw walls under construction
-    desenhaMuroEmConstrucao(-50.0, 0.0, -50.0, 100.0, 5.0);  // North wall
-    desenhaMuroEmConstrucao(-50.0, 0.0, 50.0, 100.0, 5.0);   // South wall
-    desenhaMuroEmConstrucao(-50.0, 0.0, -50.0, 100.0, 5.0);  // West wall (rotated)
+    desenhaMuroEmConstrucao(-50.0,  -0.5f, -50.0, 100.0, 5.0);  // North wall
+    desenhaMuroEmConstrucao(-50.0, -0.5f, 50.0, 100.0, 5.0);   // South wall
+
     glPushMatrix();
-    glTranslatef(50.0, 0.0, 50.0);
     glRotatef(-90.0, 0.0, 1.0, 0.0);
-    desenhaMuroEmConstrucao(0.0, 0.0, 0.0, 100.0, 5.0);      // East wall (rotated)
+    desenhaMuroEmConstrucao(-50.0,  -0.5f, -50.0, 100.0, 5.0);  
+    desenhaMuroEmConstrucao(-50.0,  -0.5f, 50.0, 100.0, 5.0);  
+        
     glPopMatrix();
     
     // Draw additional construction elements
@@ -1198,11 +1218,49 @@ void desenhaMapa(GLuint texturaID) {
     glRotatef(45.0, 0.0, 1.0, 0.0);
     desenhaViga(15.0, 0.5, 0.5);
     glPopMatrix();
+
+
+    // Iron beams
+    glPushMatrix();
+    glTranslatef(15.0, 0.0, -15.0);
+    desenhaViga(10.0, 0.5, 0.5);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(20.0, 0.0, -20.0);
+    glRotatef(45.0, 0.0, 1.0, 0.0);
+    desenhaViga(15.0, 0.5, 0.5);
+    glPopMatrix();
+
+    // Iron beams
+    glPushMatrix();
+    glTranslatef(35.0, 0.0, -10.0);
+    desenhaViga(10.0, 0.5, 0.5);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(17.0, 0.0, 15.0);
+    glRotatef(45.0, 0.0, 1.0, 0.0);
+    desenhaViga(15.0, 0.5, 0.5);
+    glPopMatrix();
     
     // Additional scaffolding
     desenhaAndaime(10.0, 0.0, 10.0);
     desenhaAndaime(15.0, 0.0, 10.0);
     desenhaAndaime(20.0, 0.0, 10.0);
+
+    // Additional scaffolding
+    desenhaAndaime(-12.0, 0.0, 10.0);
+    desenhaAndaime(-10.0, 0.0, -10.0);
+    desenhaAndaime(35.0, 0.0, 1.0);
+    desenhaAndaime(-12.0, 04.0, 10.0);
+    desenhaAndaime(-10.0, 04.0, -10.0);
+    desenhaAndaime(35.0, 04.0, 1.0);
+
+    desenhaPredio(5,4.0f,7.0f,7.0f,20.0f,20.0f);
+
+    desenhaPredio(5,4.0f,7.0f,7.0f,-20.0f,-20.0f);
+    
     
     glDisable(GL_TEXTURE_2D);
     
@@ -1212,7 +1270,7 @@ void desenhaMapa(GLuint texturaID) {
 
 void setFreeCamera() {
     float camX = cameraDistance * sin(cameraAngleY) * cos(cameraAngleX);
-    float camY = cameraDistance * sin(cameraAngleX);
+    float camY = cameraDistance * sin(cameraAngleX) + 2;
     float camZ = cameraDistance * cos(cameraAngleY) * cos(cameraAngleX);
     gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 }
@@ -1220,9 +1278,9 @@ void setFreeCamera() {
 
 void setFirstPersonCamera() {
     // Ajuste estes valores para posicionar a câmera corretamente dentro da cabine
-    float cabineOffsetX = -0.8f;  // Deslocamento para frente na cabine
-    float cabineOffsetY = 2.2f;  // Altura da câmera na cabine
-    float cabineOffsetZ = 10.0f;  // Deslocamento lateral (0 para centro)
+    float cabineOffsetX = -1.2f;  // Deslocamento para frente na cabine
+    float cabineOffsetY = 2.8f;  // Altura da câmera na cabine
+    float cabineOffsetZ = 0.0f;  // Deslocamento lateral (0 para centro)
 
     // Calcula a posição da câmera dentro da cabine
     float camX = posX - cabineOffsetX * cos(direcao * M_PI / 180.0f) - cabineOffsetZ * sin(direcao * M_PI / 180.0f);
@@ -1240,19 +1298,19 @@ void setFirstPersonCamera() {
 
 void setThirdPersonCamera() {
     // Ajuste estes valores para posicionar a câmera corretamente dentro da cabine
-    float cabineOffsetX = -20.8f;  // Deslocamento para frente na cabine
-    float cabineOffsetY = 8.2f;  // Altura da câmera na cabine
-    float cabineOffsetZ = 8.0f;  // Deslocamento lateral (0 para centro)
+    float cabineOffsetX = -15.8f;  // Deslocamento para frente na cabine
+    float cabineOffsetY = 6.2f;  // Altura da câmera na cabine
+    float cabineOffsetZ = 0.0f;  // Deslocamento lateral (0 para centro)
 
     // Calcula a posição da câmera dentro da cabine
-    float camX = posX - cabineOffsetX * cos(direcao * M_PI / 270.0f) - cabineOffsetZ * sin(direcao * M_PI / 270.0f);
+    float camX = posX - cabineOffsetX * cos(direcao * M_PI / 180.0f) - cabineOffsetZ * sin(direcao * M_PI / 180.0f);
     float camY = cabineOffsetY;
-    float camZ = posZ + cabineOffsetX * sin(direcao * M_PI / 270.0f) - cabineOffsetZ * cos(direcao * M_PI / 270.0f);
+    float camZ = posZ + cabineOffsetX * sin(direcao * M_PI / 180.0f) - cabineOffsetZ * cos(direcao * M_PI / 180.0f);
 
     // Calcula o ponto para onde a câmera está olhando
-    float lookX = camX - cos(direcao * M_PI / 270.0f);
+    float lookX = camX - cos(direcao * M_PI / 180.0f);
     float lookY = camY;  // Mantém o olhar no mesmo nível da câmera
-    float lookZ = camZ + sin(direcao * M_PI / 270.0f);
+    float lookZ = camZ + sin(direcao * M_PI / 180.0f);
 
     gluLookAt(camX, camY, camZ, lookX, lookY, lookZ, 0.0f, 1.0f, 0.0f);
 }
@@ -1286,11 +1344,7 @@ void display()
             break;
     }
 
-    // Posicionar a câmera
-    float camX = cameraDistance * sin(cameraAngleY) * cos(cameraAngleX);
-    float camY = cameraDistance * sin(cameraAngleX);
-    float camZ = cameraDistance * cos(cameraAngleY) * cos(cameraAngleX);
-    gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    
 
     // Atualizar a posição e direção do farol
     atualizaFarol();
