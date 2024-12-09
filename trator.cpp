@@ -4,10 +4,14 @@
 #define PI 3.14159265
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include <ctime>
 
 GLuint texturaRoda;
 GLuint texturaChao;
 
+GLuint texturaFerro;
+GLuint texturaMuro;
+GLuint texturaTijolo;
 
 bool farolLigado = false;           // Estado do farol
 float anguloRodasDianteiras = 0.0f; // Ângulo das rodas dianteiras
@@ -33,6 +37,13 @@ bool emRe = false;                   // Estado de ré
 float tempoUltimaRe = 0.0f;          // Tempo desde a última vez que a ré foi acionada
 
 const float TEMPO_APAGAR_LANTERNA = 2.0f;  // Tempo para apagar a lanterna após parar a ré (em segundos)
+
+// Adicione estas novas variáveis globais
+enum CameraType { CAMERA_FREE, CAMERA_FIRST_PERSON, CAMERA_THIRD_PERSON };
+CameraType currentCamera = CAMERA_FREE;
+float thirdPersonDistance = 5.0f;
+float firstPersonHeight = 2.0f;
+
 
 void desenhaLanternasTraseiras()
 {
@@ -256,14 +267,57 @@ void atualizaFarol()
     glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, direcaoLuzEsquerda);
 }
 
-void inicializa()
-{
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+void createSimpleTexture(int width, int height, unsigned char* data, unsigned char r, unsigned char g, unsigned char b) {
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            data[(y * width + x) * 3 + 0] = r;
+            data[(y * width + x) * 3 + 1] = g;
+            data[(y * width + x) * 3 + 2] = b;
+        }
+    }
+}
+
+
+void createSandTexture(int width, int height, unsigned char* data) {
+    srand(static_cast<unsigned int>(time(NULL)));
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            unsigned char c = rand() % 64 + 192; // Base de cor clara
+            data[(y * width + x) * 3 + 0] = c;
+            data[(y * width + x) * 3 + 1] = c - 48; // Um pouco menos de verde
+            data[(y * width + x) * 3 + 2] = c - 80; // Ainda menos azul para cor de areia
+        }
+    }
+}
+
+
+
+void createBrickTexture(int width, int height, unsigned char* data) {
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int brickX = x % 20;
+            int brickY = y % 10;
+            bool isMortar = (brickX < 1) || (brickY < 1);
+            
+            unsigned char r = isMortar ? 200 : (180 + rand() % 50);
+            unsigned char g = isMortar ? 200 : (100 + rand() % 50);
+            unsigned char b = isMortar ? 200 : (80 + rand() % 30);
+            
+            data[(y * width + x) * 3 + 0] = r;
+            data[(y * width + x) * 3 + 1] = g;
+            data[(y * width + x) * 3 + 2] = b;
+        }
+    }
+}
+
+
+void inicializa() {
+    glClearColor(0.529f, 0.808f, 0.922f, 1.0f); // Fundo azul céu
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
 
-    configurarIluminacaoSetas(); // Configura a iluminação para as setas
+    configurarIluminacaoSetas();
 
     glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
     glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
@@ -273,9 +327,56 @@ void inicializa()
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
-    glEnable(GL_TEXTURE_2D); // Habilita texturas
+    glEnable(GL_TEXTURE_2D);
     carregarTextura("pneu.png", texturaRoda);
-    carregarTextura("rua.png", texturaChao); // Carrega a textura do chão
+
+    // Criar e carregar textura de areia
+    const int sandTexSize = 256;
+    unsigned char sandTextureData[sandTexSize * sandTexSize * 3];
+    createSandTexture(sandTexSize, sandTexSize, sandTextureData);
+
+    glGenTextures(1, &texturaChao);
+    glBindTexture(GL_TEXTURE_2D, texturaChao);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sandTexSize, sandTexSize, 0, GL_RGB, GL_UNSIGNED_BYTE, sandTextureData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    
+const int texSize = 256;
+    unsigned char textureData[texSize * texSize * 3];
+    
+    createSandTexture(texSize, texSize, textureData);
+    glGenTextures(1, &texturaChao);
+    glBindTexture(GL_TEXTURE_2D, texturaChao);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texSize, texSize, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // Create iron texture
+    createSimpleTexture(texSize, texSize, textureData, 100, 100, 100);
+    glGenTextures(1, &texturaFerro);
+    glBindTexture(GL_TEXTURE_2D, texturaFerro);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texSize, texSize, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // Create brick texture
+    createBrickTexture(texSize, texSize, textureData);
+    glGenTextures(1, &texturaTijolo);
+    glBindTexture(GL_TEXTURE_2D, texturaTijolo);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texSize, texSize, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+
 }
 
 void atualizaIluminacao()
@@ -965,37 +1066,205 @@ void desenhaTrator()
     glPopMatrix(); // Finaliza as transformações do trator
 }
 
-void desenhaMapa(GLuint texturaID)
-{
 
-    float larguraMapa = 50; 
-    float comprimentoMapa = 50;
+void desenhaViga(float comprimento, float largura, float altura) {
     glPushMatrix();
-    glColor3f(1.0f, 1.0f, 1.0f); // Branco para não alterar a textura
-    glEnable(GL_TEXTURE_2D);  // Habilitar texturização
-    glBindTexture(GL_TEXTURE_2D, texturaID);  // Associar a textura carregada
-   
-    glBegin(GL_QUADS);
-        // Coordenadas de textura ajustadas para repetição proporcional ao tamanho do mapa
-        float repeatX = larguraMapa / 10.0f;      // Número de repetições na largura
-        float repeatZ = comprimentoMapa / 10.0f;  // Número de repetições no comprimento
-
-        // Definindo os vértices com base nas variáveis de largura e comprimento
-        glTexCoord2f(0.0f, 0.0f); 
-        glVertex3f(-larguraMapa / 2.0f, -0.5f, -comprimentoMapa / 2.0f);
-
-        glTexCoord2f(0.0f, repeatZ); 
-        glVertex3f(-larguraMapa / 2.0f, -0.5f, comprimentoMapa / 2.0f);
-
-        glTexCoord2f(repeatX, repeatZ); 
-        glVertex3f(larguraMapa / 2.0f, -0.5f, comprimentoMapa / 2.0f);
-
-        glTexCoord2f(repeatX, 0.0f); 
-        glVertex3f(larguraMapa / 2.0f, -0.5f, -comprimentoMapa / 2.0f);
-    glEnd();
-
-    glDisable(GL_TEXTURE_2D);
+    glScalef(comprimento, altura, largura);
+    glutSolidCube(1.0);
     glPopMatrix();
+}
+
+void desenhaAndaime(float x, float y, float z) {
+    glPushMatrix();
+    glTranslatef(x, y, z);
+    
+    // Vertical supports
+    glPushMatrix();
+    glTranslatef(-0.5, 2.0, -0.5);
+    desenhaViga(0.1, 0.1, 4.0);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(0.5, 2.0, -0.5);
+    desenhaViga(0.1, 0.1, 4.0);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(-0.5, 2.0, 0.5);
+    desenhaViga(0.1, 0.1, 4.0);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(0.5, 2.0, 0.5);
+    desenhaViga(0.1, 0.1, 4.0);
+    glPopMatrix();
+    
+    // Horizontal supports
+    glPushMatrix();
+    glTranslatef(0.0, 0.5, 0.0);
+    desenhaViga(1.1, 1.1, 0.1);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(0.0, 2.0, 0.0);
+    desenhaViga(1.1, 1.1, 0.1);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(0.0, 3.5, 0.0);
+    desenhaViga(1.1, 1.1, 0.1);
+    glPopMatrix();
+    
+    glPopMatrix();
+}
+
+void desenhaMuroEmConstrucao(float x, float y, float z, float comprimento, float altura) {
+    glPushMatrix();
+    glTranslatef(x, y, z);
+    
+    // Draw the brick wall
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texturaTijolo);
+    
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f, 0.0f, 0.0f);
+    glTexCoord2f(comprimento/2.0f, 0.0f); glVertex3f(comprimento, 0.0f, 0.0f);
+    glTexCoord2f(comprimento/2.0f, altura/2.0f); glVertex3f(comprimento, altura, 0.0f);
+    glTexCoord2f(0.0f, altura/2.0f); glVertex3f(0.0f, altura, 0.0f);
+    glEnd();
+    
+    glDisable(GL_TEXTURE_2D);
+    
+    // Draw scaffolding
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texturaFerro);
+    glColor3f(0.6f, 0.6f, 0.6f);
+    
+    float scaffoldSpacing = 5.0f;
+    for (float i = 0; i < comprimento; i += scaffoldSpacing) {
+        desenhaAndaime(i, 0.0, 0.5);
+    }
+    
+    glDisable(GL_TEXTURE_2D);
+    
+    // Draw construction materials
+    glColor3f(0.8f, 0.8f, 0.8f);
+    for (float i = 0; i < comprimento; i += 10.0f) {
+        glPushMatrix();
+        glTranslatef(i, 0.0, 1.0);
+        glutSolidCube(1.0);
+        glPopMatrix();
+    }
+    
+    glPopMatrix();
+}
+
+void desenhaMapa(GLuint texturaID) {
+    glPushMatrix();
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texturaID);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-50.0f, -0.5f, -50.0f);
+        glTexCoord2f(0.0f, 10.0f); glVertex3f(-50.0f, -0.5f, 50.0f);
+        glTexCoord2f(10.0f, 10.0f); glVertex3f(50.0f, -0.5f, 50.0f);
+        glTexCoord2f(10.0f, 0.0f); glVertex3f(50.0f, -0.5f, -50.0f);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    
+    // Draw walls under construction
+    desenhaMuroEmConstrucao(-50.0, 0.0, -50.0, 100.0, 5.0);  // North wall
+    desenhaMuroEmConstrucao(-50.0, 0.0, 50.0, 100.0, 5.0);   // South wall
+    desenhaMuroEmConstrucao(-50.0, 0.0, -50.0, 100.0, 5.0);  // West wall (rotated)
+    glPushMatrix();
+    glTranslatef(50.0, 0.0, 50.0);
+    glRotatef(-90.0, 0.0, 1.0, 0.0);
+    desenhaMuroEmConstrucao(0.0, 0.0, 0.0, 100.0, 5.0);      // East wall (rotated)
+    glPopMatrix();
+    
+    // Draw additional construction elements
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texturaFerro);
+    glColor3f(0.5f, 0.5f, 0.5f);
+    
+    // Iron beams
+    glPushMatrix();
+    glTranslatef(-15.0, 0.0, -15.0);
+    desenhaViga(10.0, 0.5, 0.5);
+    glPopMatrix();
+    
+    glPushMatrix();
+    glTranslatef(-20.0, 0.0, -20.0);
+    glRotatef(45.0, 0.0, 1.0, 0.0);
+    desenhaViga(15.0, 0.5, 0.5);
+    glPopMatrix();
+    
+    // Additional scaffolding
+    desenhaAndaime(10.0, 0.0, 10.0);
+    desenhaAndaime(15.0, 0.0, 10.0);
+    desenhaAndaime(20.0, 0.0, 10.0);
+    
+    glDisable(GL_TEXTURE_2D);
+    
+    glPopMatrix();
+}
+
+
+void setFreeCamera() {
+    float camX = cameraDistance * sin(cameraAngleY) * cos(cameraAngleX);
+    float camY = cameraDistance * sin(cameraAngleX);
+    float camZ = cameraDistance * cos(cameraAngleY) * cos(cameraAngleX);
+    gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+}
+
+
+void setFirstPersonCamera() {
+    // Ajuste estes valores para posicionar a câmera corretamente dentro da cabine
+    float cabineOffsetX = -0.8f;  // Deslocamento para frente na cabine
+    float cabineOffsetY = 2.2f;  // Altura da câmera na cabine
+    float cabineOffsetZ = 10.0f;  // Deslocamento lateral (0 para centro)
+
+    // Calcula a posição da câmera dentro da cabine
+    float camX = posX - cabineOffsetX * cos(direcao * M_PI / 180.0f) - cabineOffsetZ * sin(direcao * M_PI / 180.0f);
+    float camY = cabineOffsetY;
+    float camZ = posZ + cabineOffsetX * sin(direcao * M_PI / 180.0f) - cabineOffsetZ * cos(direcao * M_PI / 180.0f);
+
+    // Calcula o ponto para onde a câmera está olhando
+    float lookX = camX - cos(direcao * M_PI / 180.0f);
+    float lookY = camY;  // Mantém o olhar no mesmo nível da câmera
+    float lookZ = camZ + sin(direcao * M_PI / 180.0f);
+
+    gluLookAt(camX, camY, camZ, lookX, lookY, lookZ, 0.0f, 1.0f, 0.0f);
+}
+
+
+void setThirdPersonCamera() {
+    // Ajuste estes valores para posicionar a câmera corretamente dentro da cabine
+    float cabineOffsetX = -20.8f;  // Deslocamento para frente na cabine
+    float cabineOffsetY = 8.2f;  // Altura da câmera na cabine
+    float cabineOffsetZ = 8.0f;  // Deslocamento lateral (0 para centro)
+
+    // Calcula a posição da câmera dentro da cabine
+    float camX = posX - cabineOffsetX * cos(direcao * M_PI / 270.0f) - cabineOffsetZ * sin(direcao * M_PI / 270.0f);
+    float camY = cabineOffsetY;
+    float camZ = posZ + cabineOffsetX * sin(direcao * M_PI / 270.0f) - cabineOffsetZ * cos(direcao * M_PI / 270.0f);
+
+    // Calcula o ponto para onde a câmera está olhando
+    float lookX = camX - cos(direcao * M_PI / 270.0f);
+    float lookY = camY;  // Mantém o olhar no mesmo nível da câmera
+    float lookZ = camZ + sin(direcao * M_PI / 270.0f);
+
+    gluLookAt(camX, camY, camZ, lookX, lookY, lookZ, 0.0f, 1.0f, 0.0f);
+}
+
+
+
+void mouseClick(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // Alterna entre os tipos de câmera
+        currentCamera = static_cast<CameraType>((currentCamera + 1) % 3);
+        glutPostRedisplay();
+    }
 }
 
 
@@ -1003,6 +1272,19 @@ void display()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
+
+    // Posicionar a câmera de acordo com o tipo selecionado
+    switch (currentCamera) {
+        case CAMERA_FREE:
+            setFreeCamera();
+            break;
+        case CAMERA_FIRST_PERSON:
+            setFirstPersonCamera();
+            break;
+        case CAMERA_THIRD_PERSON:
+            setThirdPersonCamera();
+            break;
+    }
 
     // Posicionar a câmera
     float camX = cameraDistance * sin(cameraAngleY) * cos(cameraAngleX);
@@ -1180,6 +1462,7 @@ int main(int argc, char **argv)
     glutTimerFunc(500, alternarVisibilidadeSetas, 0); // Inicia o timer para as setas piscarem
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
+    glutMouseFunc(mouseClick);  // Adiciona a função de callback para o mouse
     glutSpecialFunc(teclasEspeciais);
     glutKeyboardFunc(teclado);
     glutMainLoop();
